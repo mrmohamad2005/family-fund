@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شمارنده نهایی فایربیس</title>
+    <title>شمارنده نهایی فایربیس (رفع خطا)</title>
     <style>
+        /* ... CSS styles ... (مانند کدهای قبلی) */
         body {
             display: flex;
             flex-direction: column;
@@ -47,13 +48,16 @@
             font-size: 1em;
             color: #d9534f;
         }
+        .loading {
+             color: #007bff;
+        }
     </style>
     
-    <script type="module">
-        // Import the necessary functions for Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebase/9.1.0/firebase-app.js";
-        import { getDatabase, ref, onValue, runTransaction } from "https://www.gstatic.com/firebase/9.1.0/firebase-database.js";
-
+    <script src="https://www.gstatic.com/firebase/9.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebase/9.1.0/firebase-database-compat.js"></script>
+    <script>
+        // توجه: دیگر از "import" استفاده نمی‌شود، توابع به صورت سراسری (Global) در دسترس هستند.
+        
         // **1. پیکربندی فایربیس (مطابق داده‌های شما)**
         const firebaseConfig = {
             apiKey: "AIzaSyDoG4gHFdiV31DIMxMciI3ElcWq7USP98I",
@@ -66,60 +70,51 @@
         };
 
         // **2. مقداردهی اولیه برنامه و دیتابیس**
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        // مرجع شمارنده در دیتابیس.
-        const counterRef = ref(database, 'clicks/total'); 
+        // استفاده از توابع سازگار (Compat)
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = app.database(); // استفاده از روش Compat
+        
+        // مرجع شمارنده در دیتابیس
+        const counterRef = database.ref('clicks/total'); 
 
         const display = document.getElementById('counter-display');
         const button = document.getElementById('click-button');
         const message = document.getElementById('message');
-        const LOCAL_STORAGE_KEY = 'mySiteHasClicked'; 
 
         // **3. خواندن زنده (Realtime) شمارنده از دیتابیس**
-        onValue(counterRef, (snapshot) => {
+        counterRef.on('value', (snapshot) => {
             const totalClicks = snapshot.val() || 0;
             display.textContent = `تعداد کل: ${totalClicks}`;
-            // اگر شمارنده اولیه را خواند، پیام لودینگ را حذف کن
-            if (totalClicks !== null) {
-                document.querySelector('.loading').style.display = 'none';
+            const loadingElement = document.querySelector('.loading');
+            if (loadingElement) {
+                loadingElement.style.display = 'none'; // حذف "در حال بارگذاری"
             }
+            message.textContent = `اتصال برقرار است. شمارنده: ${totalClicks}`;
+            button.disabled = false;
+            button.textContent = 'کلیک کنید!';
+        }, (error) => {
+            message.textContent = `❌ خطا در خواندن دیتابیس. کنسول را چک کنید.`;
+            console.error("Firebase Read Error:", error);
         });
 
-        // **4. تابع اجرای کلیک**
+        // **4. تابع اجرای کلیک (فقط افزایش)**
         function incrementCounter() {
-            // الف) بررسی Local Storage (کنترل "یکبار برای هر مرورگر")
-            if (localStorage.getItem(LOCAL_STORAGE_KEY) === 'true') {
-                return;
-            }
-
-            // ب) اجرای تراکنش (افزایش ایمن شمارنده)
-            runTransaction(counterRef, (currentTotal) => {
+            // استفاده از runTransaction
+            counterRef.transaction((currentTotal) => {
                 if (currentTotal === null) {
                     return 1;
                 }
                 return currentTotal + 1;
             }).then(() => {
-                // ج) اگر تراکنش موفق بود:
-                localStorage.setItem(LOCAL_STORAGE_KEY, 'true');
-                button.disabled = true;
-                button.textContent = 'شما قبلاً کلیک کردید!';
-                message.textContent = 'کلیک شما با موفقیت ثبت و شمارنده به‌روز شد.';
+                message.textContent = '✅ کلیک با موفقیت به دیتابیس ارسال شد.';
             }).catch((error) => {
-                console.error("Transaction failed: ", error);
-                message.textContent = 'خطا در ثبت کلیک. دوباره تلاش کنید.';
+                console.error("Transaction failed (WRITE ERROR): ", error);
+                message.textContent = `❌ خطا در ثبت کلیک. کنسول را چک کنید.`;
             });
         }
 
         // **5. اتصال تابع به دکمه**
         button.addEventListener('click', incrementCounter);
-
-        // **6. بررسی اولیه وضعیت در هنگام بارگذاری صفحه**
-        if (localStorage.getItem(LOCAL_STORAGE_KEY) === 'true') {
-            button.disabled = true;
-            button.textContent = 'شما قبلاً کلیک کردید!';
-            message.textContent = 'شما قبلاً روی این دستگاه کلیک کرده‌اید.';
-        }
     </script>
 </head>
 <body>
