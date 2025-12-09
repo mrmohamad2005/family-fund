@@ -68,18 +68,22 @@
         // **2. مقداردهی اولیه برنامه و دیتابیس**
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
-        // مرجع شمارنده در دیتابیس. (مطمئن شوید که در فایربیس در تب Data، این مسیر (clicks/total) وجود دارد.)
+        // مرجع شمارنده در دیتابیس.
         const counterRef = ref(database, 'clicks/total'); 
 
         const display = document.getElementById('counter-display');
         const button = document.getElementById('click-button');
         const message = document.getElementById('message');
-        const LOCAL_STORAGE_KEY = 'mySiteHasClicked'; // کلید یونیک برای Local Storage
+        const LOCAL_STORAGE_KEY = 'mySiteHasClicked'; 
 
         // **3. خواندن زنده (Realtime) شمارنده از دیتابیس**
         onValue(counterRef, (snapshot) => {
             const totalClicks = snapshot.val() || 0;
             display.textContent = `تعداد کل: ${totalClicks}`;
+            // اگر شمارنده اولیه را خواند، پیام لودینگ را حذف کن
+            if (totalClicks !== null) {
+                document.querySelector('.loading').style.display = 'none';
+            }
         });
 
         // **4. تابع اجرای کلیک**
@@ -97,14 +101,10 @@
                 return currentTotal + 1;
             }).then(() => {
                 // ج) اگر تراکنش موفق بود:
-                // ذخیره وضعیت در Local Storage
                 localStorage.setItem(LOCAL_STORAGE_KEY, 'true');
-                
-                // غیرفعال کردن دکمه
                 button.disabled = true;
                 button.textContent = 'شما قبلاً کلیک کردید!';
                 message.textContent = 'کلیک شما با موفقیت ثبت و شمارنده به‌روز شد.';
-
             }).catch((error) => {
                 console.error("Transaction failed: ", error);
                 message.textContent = 'خطا در ثبت کلیک. دوباره تلاش کنید.';
@@ -125,6 +125,7 @@
 <body>
     <h1>شمارنده مشترک</h1>
     <div id="counter-display">...</div>
+    <span class="loading" style="display: block;">در حال بارگذاری...</span>
     <button id="click-button">کلیک کنید!</button>
     <p id="message"></p>
 </body>
